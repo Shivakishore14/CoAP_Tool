@@ -1,4 +1,7 @@
 from PyQt4 import QtCore, QtGui
+import logging
+import asyncio
+from aiocoap import *
 import sys
 
 try:
@@ -78,9 +81,9 @@ class Ui_Form(QtGui.QWidget):
         self.rbGet = QtGui.QRadioButton(self.tab_2)
         self.rbGet.setGeometry(QtCore.QRect(60, 110, 110, 25))
         self.rbGet.setObjectName(_fromUtf8("rbGet"))
-        self.rbPost = QtGui.QRadioButton(self.tab_2)
-        self.rbPost.setGeometry(QtCore.QRect(220, 110, 110, 25))
-        self.rbPost.setObjectName(_fromUtf8("rbPost"))
+        self.rbPut = QtGui.QRadioButton(self.tab_2)
+        self.rbPut.setGeometry(QtCore.QRect(220, 110, 110, 25))
+        self.rbPut.setObjectName(_fromUtf8("rbPut"))
         self.etRequestContent = QtGui.QTextEdit(self.tab_2)
         self.etRequestContent.setGeometry(QtCore.QRect(100, 160, 341, 121))
         self.etRequestContent.setObjectName(_fromUtf8("etRequestContent"))
@@ -93,9 +96,9 @@ class Ui_Form(QtGui.QWidget):
         self.etLogsClient = QtGui.QTextEdit(self.tab_2)
         self.etLogsClient.setGeometry(QtCore.QRect(20, 390, 411, 171))
         self.etLogsClient.setObjectName(_fromUtf8("etLogsClient"))
-        self.btnSendRqquest = QtGui.QPushButton(self.tab_2)
-        self.btnSendRqquest.setGeometry(QtCore.QRect(170, 310, 121, 31))
-        self.btnSendRqquest.setObjectName(_fromUtf8("btnSendRqquest"))
+        self.btnSendRequest = QtGui.QPushButton(self.tab_2)
+        self.btnSendRequest.setGeometry(QtCore.QRect(170, 310, 121, 31))
+        self.btnSendRequest.setObjectName(_fromUtf8("btnSendRequest"))
         self.tabWidget.addTab(self.tab_2, _fromUtf8(""))
         self.horizontalLayout_2.addWidget(self.tabWidget)
 
@@ -114,14 +117,44 @@ class Ui_Form(QtGui.QWidget):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("Form", "Server", None))
         self.label_5.setText(_translate("Form", "URL", None))
         self.rbGet.setText(_translate("Form", "Get", None))
-        self.rbPost.setText(_translate("Form", "Post", None))
+        self.rbPut.setText(_translate("Form", "Put", None))
         self.label_6.setText(_translate("Form", "Content", None))
         self.label_7.setText(_translate("Form", "Response From server", None))
-        self.btnSendRqquest.setText(_translate("Form", "Send Request", None))
+        self.btnSendRequest.setText(_translate("Form", "Send Request", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("Form", "Client", None))
+        ##end auto generated
 
+        self.btnAdd.clicked.connect(self.test)
+        self.btnSendRequest.clicked.connect(self.clientReqWrap)
+        self.rbGet.setChecked(True)
 
+    def test(self):
+        path = self.etPath.toPlainText()
+        responseContent = self.etResponse.toPlainText()
+        self.etLogsServer.setPlainText("SET [ "+path+" ] => "+responseContent)
+        #print path+responseContent
 
+    def clientReqWrap(self):
+        asyncio.get_event_loop().run_until_complete(self.clientReq())
+
+    async def clientReq(self):
+        protocol = await Context.create_client_context()
+        url = self.etUrl.toPlainText()
+
+        request = Message(code=GET, uri=url)
+        if self.rbPut.isChecked() == True:
+            p = self.etRequestContent.toPlainText()
+            request = Message(code=PUT, uri=url, payload=str.encode(p))
+
+        try:
+            response = await protocol.request(request).response
+        except Exception as e:
+            print('Failed to fetch resource:')
+            self.etLogsClient.setPlainText("[ Failed ]")
+            print(e)
+        else:
+            s = '[Result] : %s\n%r'%(response.code, response.payload)
+            self.etLogsClient.setPlainText(s)
 
 
 
